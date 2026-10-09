@@ -1,0 +1,9 @@
+export function pollingDelay(status:number,failures:number,interval:number){if([400,401,403,404].includes(status))return null;return Math.min(120000,Math.max(status===429?60000:interval,interval*2**Math.min(failures,4)));}
+export function createPolling<T>(d:{request:(signal:AbortSignal)=>Promise<T>;onData:(data:T)=>void;onError:(e:unknown)=>void;onLoading:(loading:boolean)=>void;interval:number;schedule?:(fn:()=>void,ms:number)=>unknown;cancel?:(timer:unknown)=>void}){
+ const schedule=d.schedule||((fn,ms)=>setTimeout(fn,ms));const cancel=d.cancel||((timer)=>clearTimeout(timer as ReturnType<typeof setTimeout>));let active=false,stopped=false,generation=0,failures=0,queued=false;let timer:unknown;let controller:AbortController|null=null;
+ const clear=()=>{if(timer!==undefined)cancel(timer);timer=undefined;};
+ async function tick(){if(!active||stopped||controller)return;clear();const turn=generation;const requestController=new AbortController();controller=requestController;d.onLoading(true);let delay:number|null=d.interval;
+  try{const data=await d.request(requestController.signal);if(turn!==generation||stopped||!active)return;failures=0;d.onData(data);}catch(e){if(turn!==generation||stopped||!active)return;failures++;d.onError(e);delay=pollingDelay(Number((e as {status?:number})?.status)||0,failures,d.interval);}finally{if(turn===generation&&!stopped&&active){controller=null;d.onLoading(false);if(queued){queued=false;timer=schedule(()=>void tick(),0);}else if(delay!==null)timer=schedule(()=>void tick(),delay);}}
+ }
+ return {setActive(value:boolean){if(stopped||value===active)return;active=value;if(!value){generation++;clear();controller?.abort();controller=null;queued=false;d.onLoading(false);}else void tick();},refresh(){if(!active||stopped)return;if(controller){queued=true;return;}void tick();},stop(){stopped=true;active=false;generation++;clear();controller?.abort();controller=null;}};
+}

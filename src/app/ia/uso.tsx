@@ -1,0 +1,6 @@
+import {useSession} from '../../auth/SessionProvider';
+import {Button,Card,ErrorState,Label,Page} from '../../components/ui';
+import {Quota} from '../../components/ai/Readout';
+import {canAiUsageHistory,type AiUsage} from '../../domain/ai';
+import {useRemote} from '../../hooks/useRemote';
+export default function Usage(){const {profile}=useSession();const admin=canAiUsageHistory(profile?.role||null);const remote=useRemote<AiUsage>(admin?'/ai/usage/history':'/ai/usage/current');return <Page refreshing={remote.loading} onRefresh={remote.reload}><Label variant="title">Uso e tickets</Label>{remote.loading&&<Label>Carregando saldo…</Label>}{remote.error?<ErrorState message={remote.error} onRetry={remote.reload}/>:<><Quota usage={remote.data}/>{admin&&remote.data&&<><Card><Label>Concluídas: {remote.data.successful}</Label><Label>Falhas: {remote.data.failed}</Label><Label>Pendentes: {remote.data.pending}</Label><Label>Fuso: {remote.data.timeZone}</Label></Card><Label variant="subtitle">Consumo diário</Label>{remote.data.days?.map(d=><Card key={d.day}><Label>{d.day} • {d.used} tickets</Label><Label>Concluídas: {d.successful} • Falhas: {d.failed} • Pendentes: {d.pending}</Label></Card>)}</>}</>}<Button title="Atualizar uso" secondary disabled={remote.loading} onPress={remote.reload}/></Page>;}

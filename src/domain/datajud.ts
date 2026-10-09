@@ -1,0 +1,13 @@
+import type {Role} from './types';
+export const canDatajud=(r:Role|null)=>!!r&&['administrador','advogado','estagiario'].includes(r);
+export const manageDatajud=(r:Role|null)=>r==='administrador'||r==='advogado';
+export const monitorId=(v:unknown):v is string=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v);
+export type PublicMovement={id:string;nome:string;dataHora:string|null;orgaoJulgador?:string};
+export type DatajudInstance={id:string;tribunal:string;grau:string;classe?:{nome:string};orgaoJulgador?:{nome:string};dataAjuizamento:string|null;formato?:{nome:string};sistema?:{nome:string};nivelSigilo?:number;assuntos?:{nome:string;codigo?:number}[]};
+export type Monitor={caseId:string;caseTitle:string;clientName:string;processNumber:string;enabled:boolean;autoSync:boolean;status:string;lastAttemptAt:string|null;lastSuccessAt:string|null;lastChangedAt:string|null;nextSyncAt:string|null;lastErrorCode:string|null;hasUnseenChanges:boolean;hasSnapshot?:boolean;officialUpdatedAt?:string|null;latestMovement?:PublicMovement|null;movementCount?:number;snapshot?:{found:boolean;officialUpdatedAt:string|null;instances:DatajudInstance[];movements:PublicMovement[]}|null};
+export const monitorStates:Record<string,string>={never:'Não consultado',syncing:'Sincronizando',ok:'Encontrado',not_found:'Não localizado',error:'Falha temporária'};
+export const monitorErrors:Record<string,string>={DATAJUD_NOT_CONFIGURED:'Integração não configurada no servidor.',DATAJUD_TERMS_NOT_ACCEPTED:'Termos do DataJud pendentes no servidor.',DATAJUD_AUTH_FAILED:'Credencial da integração recusada.',DATAJUD_RATE_LIMITED:'Limite temporário de consultas atingido.',DATAJUD_TIMEOUT:'A consulta excedeu o tempo.',DATAJUD_UNAVAILABLE:'Serviço temporariamente indisponível.',DATAJUD_INVALID_RESPONSE:'A fonte retornou uma resposta inesperada.'};
+export function monitorPath(id:unknown){if(!monitorId(id))throw new Error('Processo inválido.');return `/datajud/monitors/${id}`;}
+export function monitorSettings(role:Role|null,enabled:boolean,autoSync:boolean){if(!manageDatajud(role)||typeof enabled!=='boolean'||typeof autoSync!=='boolean')throw new Error('Configuração não permitida.');return {enabled,autoSync};}
+export function dueMonitors(items:Monitor[],now=Date.now()){return items.filter(m=>m.enabled&&m.autoSync&&(!m.nextSyncAt||Date.parse(m.nextSyncAt)<=now)).slice(0,5);}
+export const filterMonitors=(items:Monitor[],query:string,status:string)=>{const term=query.normalize('NFKC').trim().toLocaleLowerCase('pt-BR');return items.filter(m=>(status==='Todos'||status==='Não revisados'&&m.hasUnseenChanges||monitorStates[m.status]===status)&&[m.caseTitle,m.clientName,m.processNumber].join(' ').toLocaleLowerCase('pt-BR').includes(term));};

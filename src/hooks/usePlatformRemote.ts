@@ -1,0 +1,5 @@
+import {useCallback,useMemo,useState} from 'react';
+import {useFocusEffect} from 'expo-router';
+import {useSession} from '../auth/SessionProvider';
+import {api,errorMessage} from '../services/api';
+export function usePlatformRemote<T>(path:string|null,keepData=false){const {platform,user,loading:checking}=useSession();const uid=platform?user?.uid:null;const [data,setData]=useState<T|null>(null);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [version,setVersion]=useState(0);const target=useMemo(()=>({path,version}),[path,version]);useFocusEffect(useCallback(()=>{const c=new AbortController();if(!keepData)setData(null);setError('');if(!uid||!target.path||checking){setLoading(false);return()=>c.abort();}setLoading(true);api<T>(target.path,{signal:c.signal}).then(v=>{if(!c.signal.aborted)setData(v);}).catch(e=>{if(!c.signal.aborted)setError(errorMessage(e));}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[uid,target,checking,keepData]));return {data,loading,error,reload:useCallback(()=>{setData(null);setVersion(v=>v+1);},[])};}

@@ -1,0 +1,5 @@
+// Persist the operation key before sending. Uncertain responses retain it across restarts.
+export async function submitInstallment<T>(body:Record<string,unknown>,d:{fingerprint:()=>Promise<string>;read:(id:string)=>string|null;write:(id:string,key:string)=>void;remove:(id:string)=>void;newKey:()=>string;send:(key:string)=>Promise<T>;current:()=>boolean}){
+ const fingerprint=await d.fingerprint();if(!d.current())throw new Error('Sessão alterada ou operação interrompida.');let key=d.read(fingerprint);if(key!==null&&!/^[A-Za-z0-9_-]{16,128}$/.test(key))throw new Error('Registro local de operação inválido. Confira o parcelamento no site antes de continuar.');if(!key){key=d.newKey();d.write(fingerprint,key);}const result=await d.send(key);if(!d.current())throw new Error('Operação interrompida. Confira os lançamentos antes de repetir.');try{d.remove(fingerprint);}catch{/* Retaining the key is safer than generating a duplicate. */}return result;
+}
+export const canonicalPlan=(body:Record<string,unknown>)=>JSON.stringify(Object.fromEntries(Object.keys(body).sort().map(key=>[key,body[key]])));

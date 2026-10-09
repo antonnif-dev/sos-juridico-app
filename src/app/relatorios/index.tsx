@@ -1,0 +1,9 @@
+import React,{useState} from 'react';
+import {router} from 'expo-router';
+import {useSession} from '../../auth/SessionProvider';
+import {Button,Card,ErrorState,Field,Label,Page} from '../../components/ui';
+import {canReports} from '../../domain/financial';
+import {closedCase} from '../../domain/reports';
+import {filterCases,type CaseRecord} from '../../domain/cases';
+import {useRemote} from '../../hooks/useRemote';
+export default function Reports(){const {profile}=useSession();const allowed=canReports(profile?.role||null);const remote=useRemote<CaseRecord[]>(allowed?'/processo':null);const [query,setQuery]=useState('');const [limit,setLimit]=useState(25);const rows=filterCases((remote.data||[]).filter(closedCase),query,'');if(!allowed)return <Page><Label>Perfil sem acesso aos relatórios finais.</Label></Page>;return <Page onRefresh={remote.reload} refreshing={remote.loading}><Label variant="title">Relatórios finais</Label><Label>Processos encerrados, arquivados ou concluídos.</Label><Field label="Pesquisar título, número ou cliente" value={query} onChangeText={v=>{setQuery(v);setLimit(25);}}/>{remote.loading?<Label>Carregando processos…</Label>:remote.error?<ErrorState message={remote.error} onRetry={remote.reload}/>:<>{rows.slice(0,limit).map(c=><Card key={c.id}><Label variant="subtitle">{c.titulo}</Label><Label>{c.numeroProcesso||'Sem número'} • {c.status}</Label><Label>{c.clienteNome}</Label><Button title="Consultar relatório final" onPress={()=>router.push({pathname:'/relatorios/[id]',params:{id:c.id}})}/></Card>)}{!rows.length&&<Label>Nenhum processo encerrado neste filtro.</Label>}{rows.length>limit&&<Button title="Mostrar mais" secondary onPress={()=>setLimit(n=>n+25)}/>}</>}<Label variant="small">Lista limitada aos processos autorizados retornados pela API.</Label><Button title="Voltar ao menu" secondary onPress={()=>router.replace('/menu')}/></Page>;}

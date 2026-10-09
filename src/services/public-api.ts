@@ -1,0 +1,1 @@
+import {createPublicApi} from './public-api-core';import {readEnvironment} from '../config/environment';export function publicApi<T>(path:string,options?:{body?:unknown;signal?:AbortSignal}){return createPublicApi(readEnvironment().apiUrl)<T>(path,options);}

@@ -1,0 +1,2 @@
+import React from 'react';import {useSession} from '../../auth/SessionProvider';import {CaseEditor} from '../../components/cases/CaseEditor';import {canCreateCases} from '../../domain/cases';import {Page,Label} from '../../components/ui';
+export default function NewCase(){const {profile}=useSession();return canCreateCases(profile?.role||null)?<CaseEditor/>:<Page><Label>Acesso não permitido.</Label></Page>;}
